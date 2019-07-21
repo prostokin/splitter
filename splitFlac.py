@@ -9,7 +9,7 @@ class Album:
     def __init__(self, path):
         self.path = path
         self.name = os.path.split(self.path)[1]
-        self.fileList = [entry for entry in os.scandir(self.path) if entry.is_file()]
+        self.updateFileList()
         self.cuePath = self.__getFilePath("cue")
         self.flacPath = self.__getFilePath("flac")
         self.cdsCount = self.__getCdsCount()
@@ -52,29 +52,49 @@ class Album:
         cue.close()
         return count
 
+    def updateFileList(self):
+        self.fileList = [entry for entry in os.scandir(self.path) if entry.is_file()]
+
+    def __getFlacList(self):
+        self.updateFileList()
+        flacList = [file.name for file in self.fileList if re.search(r"\d\d(\s|\w|\W)*(flac)$", file.name)]
+        return flacList
+
     def __getFilePath(self, suffix):
         for entry in self.fileList:
             if re.search(r"({0})$".format(suffix), entry.name):
                 cuePath = entry.path
                 return cuePath
 
+    def tagFiles(self):
+        if self.flacPath:
+            self.__delFlac()
+        os.chdir(self.path)
+        args = ["cuetag.sh", self.cuePath]
+        proc = subprocess.run(args + self.__getFlacList())
+        if proc.returncode == 0:
+            print("\nFiles tagged")
+            return
+
     def split(self):
         if not self.splited:
             os.chdir(self.path)
             proc = subprocess.run(["shnsplit", "-f", self.cuePath, "-o", "flac",
-                                     "-t", "%n %t", self.flacPath])
+                                     "-t", "%n_%t", self.flacPath])
             if proc.returncode == 0:
                 self.splited = True
+                self.tagFiles()
                 return 0
             else:
                 return 1
         else:
-            print("Album: {0} has already splited".format(self.name))
+            print("\nAlbum: {0} has already splited".format(self.name))
             return
 
     def __delFlac(self):
         proc = subprocess.run(["gio", "trash", self.flacPath])
         if proc.returncode == 0:
+            print("\nFile: {0}\nmoved to trash".format(self.flacPath))
             self.flacPath = None
             return 0
         else:
@@ -96,7 +116,9 @@ def main(discoPath):
 
     album = Album(r"/run/media/pavel/Новый том/Multimedia/Music/Agalloch/2002-The Mantle")
     print(album)
-    album.split()
+    print(album.split())
+    # os.chdir(album.path)
+    # album.tagFiles()
 
 
 if __name__ == '__main__':
