@@ -10,18 +10,25 @@ class Album:
         self.path = path
         self.name = os.path.split(self.path)[1]
         self.fileList = [entry for entry in os.scandir(self.path) if entry.is_file()]
-        self.cuePath = self.__getCuePath()
+        self.cuePath = self.__getFilePath("cue")
+        self.flacPath = self.__getFilePath("flac")
         self.cdsCount = self.__getCdsCount()
         self.tracksCount = self.__getTracksCount()
         self.splited = self.__getSplited()
 
     def __repr__(self):
-        return "Name: {0}\nPath: {1}\nCDs: {2}\nSplited: {3}\nCUE: {4}\nTracks: {5}".format(self.name, self.path, 
-                                                                    self.cdsCount, self.splited,
-                                                                    self.cuePath, self.tracksCount)
+        info = str("Name: {0}\n".format(self.name) +
+        "Path: {0}\n".format(self.path) +
+        "CDs: {0}\n".format(self.cdsCount) +
+        "Tracks: {0}\n".format(self.tracksCount) +
+        "Splited: {0}\n".format(self.splited) +
+        "CUE: {0}\n".format(self.cuePath) +
+        "Flac: {0}\n".format(self.flacPath))
+        return info
 
     def __getSplited(self):
-        if len(self.fileList) >= self.tracksCount:
+        flacList = [file for file in self.fileList if re.search(r"(flac)$", file.name)]
+        if len(flacList) >= self.tracksCount:
             return True
         else:
             return False
@@ -45,11 +52,33 @@ class Album:
         cue.close()
         return count
 
-    def __getCuePath(self):
+    def __getFilePath(self, suffix):
         for entry in self.fileList:
-            if re.search(r"(cue)$", entry.name):
+            if re.search(r"({0})$".format(suffix), entry.name):
                 cuePath = entry.path
                 return cuePath
+
+    def split(self):
+        if not self.splited:
+            os.chdir(self.path)
+            proc = subprocess.run(["shnsplit", "-f", self.cuePath, "-o", "flac",
+                                     "-t", "%n %t", self.flacPath])
+            if proc.returncode == 0:
+                self.splited = True
+                return 0
+            else:
+                return 1
+        else:
+            print("Album: {0} has already splited".format(self.name))
+            return
+
+    def __delFlac(self):
+        proc = subprocess.run(["gio", "trash", self.flacPath])
+        if proc.returncode == 0:
+            self.flacPath = None
+            return 0
+        else:
+            return 1
 
 
 class Discography:
@@ -61,13 +90,13 @@ class Discography:
         pass
 
 
-
 def main(discoPath):
     # disco = Discography(discoPath)
     # print(disco.path)
 
     album = Album(r"/run/media/pavel/Новый том/Multimedia/Music/Agalloch/2002-The Mantle")
     print(album)
+    album.split()
 
 
 if __name__ == '__main__':
