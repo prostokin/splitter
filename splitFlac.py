@@ -16,14 +16,14 @@ class Album:
         self.splited = self.isSplited()
 
     def isSplited(self):
-        self.tracksList = self.__getFileList(pattern=r"\d\d(\s|\w|\W)*", suffix="flac")
-        if len(self.tracksList) == self.tracksCount:
+        self.tracksList += self.__getFileList(pattern=r"\d\d(\s|\w|\W)*", suffix="flac")
+        if len(self.tracksList) == self.tracksCount or self.tracksCount == 1:
             return True
         else:
             return False
 
     def getAlbumData(self):
-        self.data = {}
+        # self.data = {}
         cueFile = open(self.cuePath, 'r')
         for line in cueFile:
             if "FILE" in line:
@@ -33,14 +33,15 @@ class Album:
             if "TRACK" in line:
                 self.tracksCount += 1
         cueFile.close()
+        if self.tracksCount == 1:
+            self.tracksList.append(self.flacPath)
 
     def __getFileList(self, pattern="", suffix=""):
         filePathList = [file.path for file in os.scandir(self.path) if file.is_file() and re.search(r"{0}({1})$".format(pattern, suffix), file.name)]
         return filePathList
 
     def tagFiles(self):
-        if self.flacPath:
-            self.__delFlac()
+        print(self.tracksList)
         os.chdir(self.path)
         args = ["cuetag.sh", self.cuePath]
         proc = subprocess.run(args + self.tracksList)
@@ -50,13 +51,15 @@ class Album:
         else:
             return 1
 
-    def split(self):
+    def split(self, delFlac=False):
         if not self.splited:
             os.chdir(self.path)
             proc = subprocess.run(["shnsplit", "-f", self.cuePath, "-o", "flac",
                                      "-t", "%n_%t", self.flacPath])
             if proc.returncode == 0:
                 self.tracksList = self.__getFileList(pattern=r"\d\d(\s|\w|\W)*", suffix="flac")
+                if delFlac and self.flacPath:
+                    self.__delFlac()
             else:
                 return 1
         else:
@@ -86,13 +89,14 @@ def main(discoPath):
     # print(disco.path)
 
     # album = Album(r"/run/media/pavel/Новый том/Multimedia/Music/Agalloch/2011-Whitedivisiongrey")
-    album = Album(r"/run/media/pavel/Новый том/Multimedia/Music/Agalloch/2002-The Mantle")
+    album = Album(r"/run/media/pavel/Drive/Multimedia/Music/Agalloch/2012-Faustian Echoes")
     print(album.name)
     print(album.path)
     print(album.cuePath)
     print(album.flacPath)
     print(album.tracksCount)
-    album.split()
+    print(album.tracksList)
+    # album.split(delFlac=True)
     album.tagFiles()
 
 
