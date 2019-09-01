@@ -2,7 +2,6 @@
 import os
 import re
 import subprocess
-import sys
 
 
 class Album:
@@ -23,7 +22,6 @@ class Album:
             return False
 
     def getAlbumData(self):
-        # self.data = {}
         cueFile = open(self.cuePath, 'r')
         for line in cueFile:
             if "FILE" in line:
@@ -41,7 +39,6 @@ class Album:
         return filePathList
 
     def tagFiles(self):
-        print(self.tracksList)
         os.chdir(self.path)
         args = ["cuetag.sh", self.cuePath]
         proc = subprocess.run(args + self.tracksList)
@@ -64,42 +61,53 @@ class Album:
                 return 1
         else:
             print("Already splitted")
+            self.tracksList = self.__getFileList(pattern=r"\d\d(\s|\w|\W)*", suffix="flac")
 
     def __delFlac(self):
-        proc = subprocess.run(["gio", "trash", self.flacPath])
-        if proc.returncode == 0:
-            print("\nFile: {0}\nmoved to trash".format(self.flacPath))
-            self.flacPath = None
-            return 0
-        else:
-            return 1
+        if self.tracksCount != 1:
+            proc = subprocess.run(["gio", "trash", self.flacPath])
+            if proc.returncode == 0:
+                print("\nFile: {0}\nmoved to trash".format(self.flacPath))
+                self.flacPath = None
+                return 0
+            else:
+                return 1
 
 
 class Discography:
     def __init__(self, path):
         self.path = path
-        self.albumsList = []
+        self.albumsList = [Album(path) for path in self.__getPathList()]
 
-    def getAlbumsList(self):
-        pass
+    def __getPathList(self):
+        pathList = []
+        tree = os.walk(self.path)
+        for path, dirs, files in tree:
+            for file in files:
+                if re.search(r"(.cue)$", file) and not path in pathList:
+                    pathList.append(path)
+        return pathList
 
 
 def main(discoPath):
-    # disco = Discography(discoPath)
-    # print(disco.path)
-
-    # album = Album(r"/run/media/pavel/Новый том/Multimedia/Music/Agalloch/2011-Whitedivisiongrey")
-    album = Album(r"/run/media/pavel/Drive/Multimedia/Music/Agalloch/2012-Faustian Echoes")
-    print(album.name)
-    print(album.path)
-    print(album.cuePath)
-    print(album.flacPath)
-    print(album.tracksCount)
-    print(album.tracksList)
-    # album.split(delFlac=True)
-    album.tagFiles()
+    if not os.path.exists(discoPath):
+        print("Path: {} does not exists".format(discoPath))
+        return
+    else:
+        disco = Discography(discoPath)
+        if len(disco.albumsList) == 0:
+            print("There are no albums in:\n{0}".format(disco.path))
+        else:
+            for album in disco.albumsList:
+                print("{0} {1}".format(album.name, album.tracksCount))
+                album.split(delFlac=True)
+                album.tagFiles()
 
 
 if __name__ == '__main__':
-    path = r"/run/media/pavel/Новый том/Multimedia/Music/Agalloch"
-    main(path)
+    main(os.getcwd())
+    #some comments
+    #some comments
+    #some comments
+    #some comments
+    
