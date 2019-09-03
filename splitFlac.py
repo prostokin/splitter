@@ -22,11 +22,12 @@ class Album:
             return False
 
     def getAlbumData(self):
-        cueFile = open(self.cuePath, 'r')
+        cueFile = open(self.cuePath, 'r', encoding='cp1251')
         for line in cueFile:
             if "FILE" in line:
-                match = re.search(r"\"(\s|\w|\W)*\"", line)
-                flacName = match.group(0)[1:-1]
+                # match = re.search(r"\"(\s|\w|\W)*\"", line)
+                # flacName = match.group(0)[1:-1]
+                flacName = line.split('"')[1]
                 self.flacPath = os.path.join(self.path, flacName)
             if "TRACK" in line:
                 self.tracksCount += 1
@@ -100,14 +101,10 @@ def main(discoPath):
         else:
             for album in disco.albumsList:
                 print("{0} {1}".format(album.name, album.tracksCount))
-                album.split(delFlac=True)
-                album.tagFiles()
+                print(album.tracksList)
+                # album.split(delFlac=True)
+                # album.tagFiles()
 
 
 if __name__ == '__main__':
     main(os.getcwd())
-    #some comments
-    #some comments
-    #some comments
-    #some comments
-    
